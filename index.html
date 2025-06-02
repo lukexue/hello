@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Whisper Recorder</title>
+</head>
+<body>
+<button id="start">Start Recording</button>
+<button id="stop" disabled>Stop Recording</button>
+<pre id="result"></pre>
+<script>
+let mediaRecorder;
+let chunks = [];
+
+const startBtn = document.getElementById('start');
+const stopBtn = document.getElementById('stop');
+const result = document.getElementById('result');
+
+startBtn.onclick = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  mediaRecorder = new MediaRecorder(stream);
+  mediaRecorder.ondataavailable = e => {
+    if (e.data.size > 0) chunks.push(e.data);
+  };
+  mediaRecorder.onstop = sendData;
+  mediaRecorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+};
+
+stopBtn.onclick = () => {
+  mediaRecorder.stop();
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+};
+
+async function sendData() {
+  const blob = new Blob(chunks, { type: 'audio/webm' });
+  chunks = [];
+  const formData = new FormData();
+  formData.append('audio', blob, 'recording.webm');
+  const resp = await fetch('/transcribe', { method: 'POST', body: formData });
+  const data = await resp.json();
+  result.textContent = data.text;
+}
+</script>
+</body>
+</html>
